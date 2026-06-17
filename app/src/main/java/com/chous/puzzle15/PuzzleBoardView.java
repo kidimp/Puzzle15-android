@@ -1,90 +1,108 @@
 package com.chous.puzzle15;
 
 import android.content.Context;
-import android.graphics.Color;
 import android.util.TypedValue;
-import android.view.Gravity;
-import android.widget.GridLayout;
+import android.widget.FrameLayout;
 
-import androidx.appcompat.widget.AppCompatTextView;
+import java.util.HashMap;
+import java.util.Map;
 
-public class PuzzleBoardView extends GridLayout {
+public class PuzzleBoardView extends FrameLayout {
 
     private static final int SIZE = 4;
 
-    private final AppCompatTextView[][] tiles = new AppCompatTextView[SIZE][SIZE];
+    private final Map<Integer, TileView> tiles = new HashMap<>();
+
+    private int tileSizePx;
+    private int marginPx;
 
     public PuzzleBoardView(Context context) {
         super(context);
 
-        setRowCount(SIZE);
-        setColumnCount(SIZE);
-
-        initGrid();
+        init();
     }
 
-    private void initGrid() {
+    private void init() {
+        tileSizePx = dpToPx(80);
+        marginPx = dpToPx(3);
 
-        int tileSize = dpToPx(80);
-        int margin = dpToPx(3);
+        createTiles();
 
-        for (int row = 0; row < SIZE; row++) {
-            for (int col = 0; col < SIZE; col++) {
+        int boardSize = SIZE * (tileSizePx + marginPx * 2);
 
-                AppCompatTextView tile = new AppCompatTextView(getContext());
+        LayoutParams params = new LayoutParams(boardSize, boardSize);
 
-                tile.setGravity(Gravity.CENTER);
+        setLayoutParams(params);
+    }
 
-                tile.setTextSize(TypedValue.COMPLEX_UNIT_SP, 36);
+    private void createTiles() {
+        for (int value = 1; value <= 15; value++) {
 
-                tile.setBackgroundResource(R.drawable.tile_orange);
+            TileView tile =
+                    new TileView(
+                            getContext(),
+                            value
+                    );
 
-                GridLayout.LayoutParams params =
-                        new GridLayout.LayoutParams();
+            LayoutParams params = new LayoutParams(tileSizePx, tileSizePx);
 
-                params.width = tileSize;
-                params.height = tileSize;
+            tile.setLayoutParams(params);
 
-                params.rowSpec = GridLayout.spec(row);
-                params.columnSpec = GridLayout.spec(col);
+            tiles.put(value, tile);
 
-                params.setMargins(
-                        margin,
-                        margin,
-                        margin,
-                        margin
-                );
-
-                tile.setLayoutParams(params);
-
-                tiles[row][col] = tile;
-
-                addView(tile);
-            }
+            addView(tile);
         }
     }
 
     public void render(int[][] grid) {
-
         for (int row = 0; row < SIZE; row++) {
+
             for (int col = 0; col < SIZE; col++) {
 
                 int value = grid[row][col];
 
-                AppCompatTextView tile = tiles[row][col];
-
                 if (value == 0) {
-
-                    tile.setText("");
-                    tile.setBackgroundColor(Color.TRANSPARENT);
-
-                } else {
-
-                    tile.setText(String.valueOf(value));
-                    tile.setBackgroundResource(R.drawable.tile_orange);
+                    continue;
                 }
+
+                TileView tile = tiles.get(value);
+
+                if (tile == null) {
+                    continue;
+                }
+
+                tile.setX(getCellX(col));
+                tile.setY(getCellY(row));
             }
         }
+    }
+
+    public void animateMove(MoveResult move, Runnable onFinished) {
+        TileView tile = tiles.get(move.getTile());
+
+        if (tile == null) {
+
+            if (onFinished != null) {
+                onFinished.run();
+            }
+
+            return;
+        }
+
+        tile.animate()
+                .x(getCellX(move.getToX()))
+                .y(getCellY(move.getToY()))
+                .setDuration(75)
+                .withEndAction(onFinished)
+                .start();
+    }
+
+    private float getCellX(int col) {
+        return col * (tileSizePx + marginPx * 2) + marginPx;
+    }
+
+    private float getCellY(int row) {
+        return row * (tileSizePx + marginPx * 2) + marginPx;
     }
 
     private int dpToPx(int dp) {

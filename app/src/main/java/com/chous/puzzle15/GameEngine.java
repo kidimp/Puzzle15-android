@@ -31,32 +31,48 @@ public class GameEngine {
     }
 
     public int[][] getGrid() {
-        return grid;
-    }
+        int[][] copy = new int[SIZE][SIZE];
 
-//    public int[][] getGrid() {
-//        int[][] copy = new int[SIZE][SIZE];
-//
-//        for (int i = 0; i < SIZE; i++) {
-//            System.arraycopy(grid[i], 0, copy[i], 0, SIZE);
-//        }
-//
-//        return copy;
-//    }
+        for (int i = 0; i < SIZE; i++) {
+            System.arraycopy(grid[i], 0, copy[i], 0, SIZE);
+        }
+
+        return copy;
+    }
 
     public int getMoves() {
         return moves;
     }
 
-    public boolean move(Direction direction) {
-        if (!canMove(direction)) {
-            return false;
+    public MoveResult move(Direction direction) {
+        int[] empty = getEmptyTileCoordinates();
+
+        int emptyX = empty[0];
+        int emptyY = empty[1];
+
+        int index = direction.getOffsetIndex();
+
+        int tileX = emptyX + OFFSET_X[index];
+        int tileY = emptyY + OFFSET_Y[index];
+
+        if (isInside(tileX, tileY)) {
+            return null;
         }
 
-        shift(direction);
+        int tileValue = grid[tileY][tileX];
+
+        grid[emptyY][emptyX] = tileValue;
+        grid[tileY][tileX] = 0;
+
         moves++;
 
-        return true;
+        return new MoveResult(
+                tileValue,
+                tileX,
+                tileY,
+                emptyX,
+                emptyY
+        );
     }
 
     public boolean isWin() {
@@ -68,38 +84,38 @@ public class GameEngine {
             Direction direction =
                     Direction.values()[ThreadLocalRandom.current().nextInt(Direction.values().length)];
 
-            if (canMove(direction)) {
-                shift(direction);
-            }
+            moveWithoutCounting(direction);
         }
 
         moves = 0;
     }
 
-    private boolean canMove(Direction direction) {
+    private void moveWithoutCounting(Direction direction) {
         int[] empty = getEmptyTileCoordinates();
+
+        int emptyX = empty[0];
+        int emptyY = empty[1];
 
         int index = direction.getOffsetIndex();
 
-        int x = empty[0] + OFFSET_X[index];
-        int y = empty[1] + OFFSET_Y[index];
+        int tileX = emptyX + OFFSET_X[index];
+        int tileY = emptyY + OFFSET_Y[index];
 
-        return x >= 0 && x < SIZE
-                && y >= 0 && y < SIZE;
+        if (isInside(tileX, tileY)) {
+            return;
+        }
+
+        int tile = grid[tileY][tileX];
+
+        grid[emptyY][emptyX] = tile;
+        grid[tileY][tileX] = 0;
     }
 
-    private void shift(Direction direction) {
-        int[] empty = getEmptyTileCoordinates();
-
-        int index = direction.getOffsetIndex();
-
-        int x = empty[0] + OFFSET_X[index];
-        int y = empty[1] + OFFSET_Y[index];
-
-        int shiftingTile = grid[y][x];
-
-        grid[y][x] = 0;
-        grid[empty[1]][empty[0]] = shiftingTile;
+    private boolean isInside(int x, int y) {
+        return x < 0
+                || x >= SIZE
+                || y < 0
+                || y >= SIZE;
     }
 
     private int[] getEmptyTileCoordinates() {
@@ -113,21 +129,6 @@ public class GameEngine {
 
         throw new IllegalStateException("Empty tile not found");
     }
-
-//    private int getOffsetIndex(Direction direction) {
-//        switch (direction) {
-//            case UP:
-//                return 1;
-//            case DOWN:
-//                return 0;
-//            case LEFT:
-//                return 3;
-//            case RIGHT:
-//                return 2;
-//            default:
-//                throw new IllegalArgumentException("Unknown direction: " + direction);
-//        }
-//    }
 
     private int[][] getWinGrid() {
         return new int[][]{

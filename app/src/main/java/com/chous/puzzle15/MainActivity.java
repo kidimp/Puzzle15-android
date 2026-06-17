@@ -17,6 +17,7 @@ public class MainActivity extends AppCompatActivity {
     private PuzzleBoardView boardView;
     private TextView movesView;
     private GestureDetector gestureDetector;
+    private boolean animationInProgress;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,10 +47,6 @@ public class MainActivity extends AppCompatActivity {
         ConstraintSet constraints = new ConstraintSet();
         constraints.clone(root);
 
-        /*
-         * movesView:
-         * сверху и по центру
-         */
         constraints.connect(
                 movesView.getId(),
                 ConstraintSet.TOP,
@@ -79,10 +76,6 @@ public class MainActivity extends AppCompatActivity {
                 ConstraintSet.END
         );
 
-        /*
-         * boardView:
-         * по центру экрана
-         */
         constraints.connect(
                 boardView.getId(),
                 ConstraintSet.TOP,
@@ -126,7 +119,12 @@ public class MainActivity extends AppCompatActivity {
             return true;
         });
 
-        updateUi();
+        renderInitialState();
+    }
+
+    private void renderInitialState() {
+        boardView.render(engine.getGrid());
+        updateMovesCounter();
     }
 
     private void initGestureDetector() {
@@ -185,23 +183,37 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void onMove(Direction direction) {
-
-        boolean moved = engine.move(direction);
-
-        if (!moved) {
+        if (animationInProgress) {
             return;
         }
 
-        updateUi();
+        MoveResult move = engine.move(direction);
 
-        if (engine.isWin()) {
-            showWinDialog();
+        if (move == null) {
+            return;
         }
+
+        animationInProgress = true;
+
+        boardView.animateMove(
+                move,
+                () -> {
+
+                    animationInProgress = false;
+
+                    updateMovesCounter();
+
+                    if (engine.isWin()) {
+                        showWinDialog();
+                    }
+                }
+        );
     }
 
-    private void updateUi() {
-        boardView.render(engine.getGrid());
-        movesView.setText("Ходы: " + engine.getMoves());
+    private void updateMovesCounter() {
+        movesView.setText(
+                "Ходы: " + engine.getMoves()
+        );
     }
 
     private int dpToPx(int dp) {
@@ -213,7 +225,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showWinDialog() {
-
         new AlertDialog.Builder(this)
                 .setTitle("Поздравляем!")
                 .setMessage(
@@ -221,10 +232,19 @@ public class MainActivity extends AppCompatActivity {
                                 "Количество ходов: " + engine.getMoves()
                 )
                 .setCancelable(false)
-                .setPositiveButton("Новая игра", (dialog, which) -> {
-                    engine.newGame();
-                    updateUi();
-                })
+                .setPositiveButton(
+                        "Новая игра",
+                        (dialog, which) -> {
+
+                            engine.newGame();
+
+                            boardView.render(
+                                    engine.getGrid()
+                            );
+
+                            updateMovesCounter();
+                        }
+                )
                 .show();
     }
 }
